@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Chat App</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        #chatContainer { width: 80%; margin: 20px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px #ccc; }
+        #messageContainer { height: 300px; overflow-y: scroll; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; border-radius: 10px; }
+        .message { padding: 5px 10px; margin: 5px; border-radius: 10px; background-color: #e0e0e0; width: fit-content; }
+        .admin { background-color: #007bff; color: white; }
+        .user { background-color: #f1f1f1; }
+        .timestamp { font-size: 0.8em; color: #888; margin-top: 5px; }
+        #nameInput, #roleSelector, #messageInput { width: calc(100% - 110px); padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        #sendBtn { padding: 10px 20px; border: none; border-radius: 5px; background-color: #007bff; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="chatContainer">
+        <div id="messageContainer"></div>
+        <input type="text" id="nameInput" placeholder="Enter your name...">
+        <select id="roleSelector">
+            <option value="User">User</option>
+            <option value="Admin">Admin</option>
+        </select>
+        <input type="text" id="messageInput" placeholder="Type a message...">
+        <button id="sendBtn">Send</button>
+    </div>
+
+    <script>
+        window.onload = function () {
+            var conn = new WebSocket('ws://localhost:8080');
+            var messageContainer = document.getElementById('messageContainer');
+
+            conn.onmessage = function(e) {
+                console.log("Received:", e.data);
+                var data = JSON.parse(e.data);
+
+                // Создание нового элемента сообщения
+                var messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                if (data.senderRole === 'Admin') {
+                    messageDiv.classList.add('admin');
+                } else {
+                    messageDiv.classList.add('user');
+                }
+                messageDiv.textContent = `${data.sender}: ${data.message}`;
+                
+                // Создание элемента для времени отправки сообщения
+                var timestampDiv = document.createElement('div');
+                timestampDiv.classList.add('timestamp');
+                timestampDiv.textContent = data.timestamp;
+                messageDiv.appendChild(timestampDiv);
+
+                // Добавление элемента в контейнер сообщений
+                messageContainer.appendChild(messageDiv);
+                messageContainer.scrollTop = messageContainer.scrollHeight;
+
+                console.log("Message added to DOM");
+            };
+
+            conn.onopen = function(e) {
+                console.log("Connection established!");
+            };
+
+            conn.onerror = function(e) {
+                console.log("Connection error:", e);
+            };
+
+            conn.onclose = function(e) {
+                console.log("Connection closed:", e);
+            };
+
+            document.getElementById('sendBtn').onclick = function() {
+                var name = document.getElementById('nameInput').value;
+                var role = document.getElementById('roleSelector').value;
+                var message = document.getElementById('messageInput').value;
+                var timestamp = new Date().toLocaleString();
+
+                if (!name) {
+                    alert('Please enter your name.');
+                    return;
+                }
+                if (message.length > 350) {
+                    alert('Message exceeds 350 characters!');
+                    return;
+                }
+                if (message) {
+                    var dataToSend = JSON.stringify({
+                        message: message,
+                        sender: name,
+                        senderRole: role,
+                        timestamp: timestamp
+                    });
+                    console.log("Sending:", dataToSend);
+                    conn.send(dataToSend);
+                    document.getElementById('messageInput').value = '';
+                } else {
+                    alert('Please enter a message.');
+                }
+            };
+        };
+    </script>
+</body>
+</html>
